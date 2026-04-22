@@ -180,7 +180,7 @@ Return exactly one JSON object with this shape:
 {{
   "observed_url": "string or null",
   "page_title": "string or null",
-  "main_heading": "string or null",
+  "main_heading": "exact text of the first H1 tag on the page, or null",
   "quotes": ["up to 2 short exact quotes from the page"],
   "facts": ["up to 2 concrete facts visible on the page"],
   "blocker_reason": "string or null"
@@ -188,6 +188,7 @@ Return exactly one JSON object with this shape:
 
 Rules:
 - If you cannot access the exact page content, set blocker_reason and leave quotes empty.
+- main_heading must be the exact text of the first H1 element only, not a summary or the page title.
 - Keep quotes short, exact, and copied verbatim from the page if available.
 - Do not include markdown fences.
 """.strip()
@@ -203,7 +204,7 @@ Return exactly one JSON object with this shape:
 {{
   "observed_url": "the exact URL you could inspect or cite, or null",
   "page_title": "the exact current page title string from the opened page, or null",
-  "main_heading": "string or null",
+  "main_heading": "exact text of the first H1 tag on the page, or null",
   "quotes": ["up to 2 short exact quotes, if any"],
   "facts": ["up to 2 concrete facts, if any"],
   "blocker_reason": "string or null",
@@ -217,6 +218,7 @@ Rules:
 - If you cannot directly read the title from the opened page itself, set page_title to null.
 - If you only found related search results but not the exact URL, set observed_url to null, page_title to null, and access_method to "related_results_only".
 - Only use access_method="opened_exact_url" when you actually opened the target URL itself.
+- main_heading must be the exact text of the first H1 element only, not a summary or the page title.
 - Do not include markdown fences.
 """.strip()
 

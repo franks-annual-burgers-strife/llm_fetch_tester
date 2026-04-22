@@ -17,6 +17,7 @@ from probe_runner import (
     trim_text,
 )
 from providers import PRESETS, ProviderApiConfig, default_provider_configs
+from version import __version__
 
 
 st.set_page_config(
@@ -29,7 +30,7 @@ def main() -> None:
     _inject_styles()
     _init_session_state()
 
-    st.title("LLM URL Access Tester")
+    st.title(f"LLM URL Access Tester  `v{__version__}`")
     st.caption(
         "Test whether provider-managed chat tools can access a supplied URL. Gemini and Claude use exact direct-URL tools; OpenAI uses a search-based access check that looks for successful page opening."
     )
