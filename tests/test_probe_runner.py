@@ -232,6 +232,43 @@ def test_claude_detects_block_page() -> None:
     assert "Cloudflare" in (result.blocker_reason or "")
 
 
+def test_claude_web_fetch_tool_error_counts_as_blocked() -> None:
+    config = ProviderApiConfig(
+        provider_id="anthropic",
+        display_name="Claude / Anthropic",
+        api_url="https://api.anthropic.com/v1/messages",
+        api_key="anthropic-secret",
+        model="claude-sonnet-4-20250514",
+    )
+    payload = {
+        "content": [
+            {
+                "type": "server_tool_use",
+                "name": "web_fetch",
+                "input": {"url": "https://blocked.example.com/page"},
+                "id": "tool_1",
+            },
+            {
+                "type": "web_fetch_tool_result",
+                "tool_use_id": "tool_1",
+                "content": {
+                    "type": "web_fetch_tool_error",
+                    "error_code": "url_not_accessible",
+                },
+            },
+        ]
+    }
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=payload, request=request)
+
+    client = httpx.Client(transport=httpx.MockTransport(handler), follow_redirects=True)
+    result = run_claude_access_check(config, "https://blocked.example.com/page", _control_unavailable(), client=client)
+
+    assert result.verdict == "likely_blocked_by_site"
+    assert result.blocker_reason == "Claude web fetch returned url_not_accessible."
+
+
 def test_openai_accessible_when_exact_url_is_cited_and_content_matches() -> None:
     config = ProviderApiConfig(
         provider_id="openai",
@@ -433,3 +470,127 @@ def test_openai_string_null_blocker_reason_is_not_treated_as_blocked() -> None:
     assert result.verdict == "accessible"
     assert result.blocker_reason is None
     assert result.summary != "null"
+
+
+def test_openai_javascript_fallback_is_accessible_but_degraded() -> None:
+    config = ProviderApiConfig(
+        provider_id="openai",
+        display_name="ChatGPT / OpenAI",
+        api_url="https://api.openai.com/v1/responses",
+        api_key="openai-secret",
+        model="gpt-4.1-mini",
+    )
+    extraction = json.dumps(
+        {
+            "observed_url": "https://example.com/page",
+            "page_title": "Example Shop",
+            "main_heading": "Sorry, but you need to enable JavaScript to run this app.",
+            "quotes": ["Sorry, but you need to enable JavaScript to run this app."],
+            "facts": ["The page has a contact phone number."],
+            "blocker_reason": "The website requires JavaScript to display its content, which is not supported in this environment.",
+        }
+    )
+    payload = {
+        "output_text": extraction,
+        "output": [
+            {
+                "type": "message",
+                "content": [
+                    {
+                        "type": "output_text",
+                        "text": extraction,
+                        "annotations": [
+                            {
+                                "type": "url_citation",
+                                "url_citation": {
+                                    "url": "https://example.com/page",
+                                    "title": "Example Shop",
+                                },
+                            }
+                        ],
+                    }
+                ],
+            },
+            {
+                "type": "web_search_call",
+                "status": "completed",
+                "action": {
+                    "type": "open_page",
+                    "url": "https://example.com/page",
+                },
+            },
+        ],
+    }
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=payload, request=request)
+
+    client = httpx.Client(transport=httpx.MockTransport(handler), follow_redirects=True)
+    result = run_openai_access_check(config, "https://example.com/page", _control_available(), client=client)
+
+    assert result.verdict == "accessible"
+    assert "not a fetch block" in result.summary
+
+
+def test_openai_top_level_citation_annotation_is_captured() -> None:
+    config = ProviderApiConfig(
+        provider_id="openai",
+        display_name="ChatGPT / OpenAI",
+        api_url="https://api.openai.com/v1/responses",
+        api_key="openai-secret",
+        model="gpt-4.1-mini",
+    )
+    extraction = json.dumps(
+        {
+            "observed_url": "https://example.com/page",
+            "page_title": "Example Domain",
+            "main_heading": "Example Domain",
+            "quotes": [],
+            "facts": ["Example Domain is reachable."],
+            "blocker_reason": None,
+        }
+    )
+    payload = {
+        "output_text": extraction,
+        "output": [
+            {
+                "type": "message",
+                "content": [
+                    {
+                        "type": "output_text",
+                        "text": extraction,
+                        "annotations": [
+                            {
+                                "type": "url_citation",
+                                "url": "https://example.com/page",
+                                "title": "Example Domain",
+                            }
+                        ],
+                    }
+                ],
+            },
+            {
+                "type": "web_search_call",
+                "status": "completed",
+                "action": {
+                    "type": "search",
+                    "sources": [
+                        {
+                            "url": "https://example.com/page",
+                            "title": "Example Domain",
+                        }
+                    ],
+                },
+            },
+        ],
+    }
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=payload, request=request)
+
+    client = httpx.Client(transport=httpx.MockTransport(handler), follow_redirects=True)
+    result = run_openai_access_check(config, "https://example.com/page", _control_available(), client=client)
+
+    assert result.verdict == "accessible"
+    assert result.citations[0].url == "https://example.com/page"
+    assert result.verification.matches_requested_url is True

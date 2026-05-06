@@ -46,6 +46,12 @@ BLOCK_PAGE_HINTS = (
     "sorry, you have been blocked",
     "verify you are human",
 )
+DEGRADED_ACCESS_HINTS = (
+    "enable javascript",
+    "requires javascript",
+    "javascript is not supported",
+    "javascript to run this app",
+)
 
 
 @dataclass(frozen=True)
@@ -484,7 +490,7 @@ def run_claude_access_check(
     extracted_heading = _nullable_str(extraction.get("main_heading"))
     quotes = _normalize_string_list(extraction.get("quotes"))
     facts = _normalize_string_list(extraction.get("facts"))
-    blocker_reason = _nullable_str(extraction.get("blocker_reason"))
+    blocker_reason = _nullable_str(extraction.get("blocker_reason")) or _claude_fetch_error_reason(fetch_results)
     verification = _verify_access(
         requested_url=target_url,
         candidate_urls=candidate_urls,
@@ -597,7 +603,10 @@ def run_openai_access_check(
     web_search_actions = _extract_openai_web_search_actions(payload)
     action_urls = _extract_openai_action_urls(web_search_actions)
     candidate_urls = _unique_urls(
-        [item.url for item in citations] + action_urls + [_nullable_str(extraction.get("observed_url"))]
+        [item.url for item in citations]
+        + action_urls
+        + _find_urls_in_object(web_search_actions)
+        + [_nullable_str(extraction.get("observed_url"))]
     )
     quotes = _normalize_string_list(extraction.get("quotes"))
     facts = _normalize_string_list(extraction.get("facts"))
@@ -947,12 +956,21 @@ def _extract_claude_fetch_results(payload: dict[str, Any]) -> list[dict[str, Any
         results.append(
             {
                 "url": content.get("url"),
+                "error_code": content.get("error_code"),
                 "title": document.get("title"),
                 "document_type": document.get("type"),
                 "media_type": ((document.get("source") or {}).get("media_type") if isinstance(document, dict) else None),
             }
         )
     return results
+
+
+def _claude_fetch_error_reason(fetch_results: list[dict[str, Any]]) -> str | None:
+    for result in fetch_results:
+        error_code = _nullable_str(result.get("error_code"))
+        if error_code:
+            return f"Claude web fetch returned {error_code}."
+    return None
 
 
 def _extract_openai_output_text(payload: dict[str, Any]) -> str:
@@ -978,7 +996,11 @@ def _extract_openai_citations(payload: dict[str, Any]) -> list[EvidenceRecord]:
             continue
         for content in item.get("content", []):
             for annotation in content.get("annotations", []):
-                citation_data = annotation.get("url_citation", {}) if isinstance(annotation, dict) else {}
+                if not isinstance(annotation, dict):
+                    continue
+                citation_data = annotation.get("url_citation")
+                if not isinstance(citation_data, dict):
+                    citation_data = annotation
                 url = citation_data.get("url")
                 title = citation_data.get("title") or url
                 if isinstance(url, str) and url:
@@ -1054,6 +1076,8 @@ def _classify_openai_diagnostic(
     )
 
     if exact_verdict == "likely_blocked_by_site":
+        return exact_verdict, exact_summary, exact_confidence
+    if exact_verdict == "accessible" and "not a fetch block" in exact_summary:
         return exact_verdict, exact_summary, exact_confidence
 
     incomplete_details = payload.get("incomplete_details")
@@ -1190,8 +1214,15 @@ def _classify_exact_access(
     facts: list[str],
 ) -> tuple[str, str, float]:
     has_content = bool(extracted_title or extracted_heading or quotes or facts)
+    degraded_signals = _collect_degraded_access_signals(
+        extracted_title,
+        extracted_heading,
+        blocker_reason,
+        *quotes,
+        *facts,
+    )
 
-    if blocker_reason and not verification.block_signals:
+    if blocker_reason and not verification.block_signals and not degraded_signals:
         block_confidence = 0.68 if not verification.matches_requested_url else 0.84
         return "likely_blocked_by_site", blocker_reason, block_confidence
 
@@ -1202,6 +1233,8 @@ def _classify_exact_access(
         return "likely_blocked_by_site", summary, confidence
 
     if verification.matches_requested_url and verification.plausible_content:
+        if degraded_signals:
+            return "accessible", "Provider reached the requested URL before rendering, but JavaScript fallback content was visible. Flag this as a rendering/content availability issue, not a fetch block.", 0.76
         if verification.control_available and (
             verification.title_match or verification.heading_match or verification.quote_hits > 0
         ):
@@ -1304,6 +1337,11 @@ def _looks_like_html(content_type: str, raw_body: str) -> bool:
 def _collect_block_signals(*values: str | None) -> list[str]:
     haystack = " ".join(value for value in values if value).lower()
     return [hint for hint in BLOCK_PAGE_HINTS if hint in haystack]
+
+
+def _collect_degraded_access_signals(*values: str | None) -> list[str]:
+    haystack = " ".join(value for value in values if value).lower()
+    return [hint for hint in DEGRADED_ACCESS_HINTS if hint in haystack]
 
 
 def _normalize_string_list(value: Any) -> list[str]:

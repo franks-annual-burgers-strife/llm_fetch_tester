@@ -164,6 +164,8 @@ def build_openai_diagnostic_request(target_url: str, config: ProviderApiConfig) 
         json_body={
             "model": config.model,
             "tools": [{"type": "web_search"}],
+            "tool_choice": "required",
+            "include": ["web_search_call.action.sources"],
             "input": build_openai_diagnostic_prompt(target_url),
             "max_output_tokens": 1600,
         },

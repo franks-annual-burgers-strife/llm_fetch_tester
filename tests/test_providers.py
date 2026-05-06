@@ -61,6 +61,8 @@ def test_build_openai_diagnostic_request() -> None:
     assert request.url == "https://api.openai.com/v1/responses"
     assert request.headers["Authorization"] == "Bearer openai-secret"
     assert request.json_body["tools"] == [{"type": "web_search"}]
+    assert request.json_body["tool_choice"] == "required"
+    assert request.json_body["include"] == ["web_search_call.action.sources"]
     assert request.json_body["model"] == "gpt-4.1-mini"
     assert request.json_body["max_output_tokens"] == 1600
     assert "reasoning" not in request.json_body

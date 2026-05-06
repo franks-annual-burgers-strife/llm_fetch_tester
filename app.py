@@ -220,8 +220,10 @@ def _render_provider_card(result: ProviderAccessResult) -> None:
         )
 
         with summary_tab:
+            issue_label = _issue_label(result)
+            issue_tone = _issue_tone(result)
             st.markdown(
-                f"<div class='summary-copy summary-{result.verdict}'>{escape(result.summary)}</div>",
+                f"<div class='summary-copy summary-{_summary_copy_tone(result)}'>{escape(result.summary)}</div>",
                 unsafe_allow_html=True,
             )
             _render_compact_details(
@@ -234,7 +236,7 @@ def _render_provider_card(result: ProviderAccessResult) -> None:
                     ("Requested URL", result.requested_url, "url"),
                     ("Evidence URL", result.evidence_url or "n/a", "url" if result.evidence_url else None),
                     ("HTTP Status", str(result.response_status) if result.response_status is not None else "n/a", _http_status_tone(result.response_status)),
-                    ("Blocker Reason", result.blocker_reason or "n/a", "likely_blocked_by_site" if result.blocker_reason else None),
+                    (issue_label, result.blocker_reason or "n/a", issue_tone),
                     ("Duration", f"{result.duration_ms} ms", None),
                     ("Error", result.error or "n/a", "provider_error" if result.error else None),
                 ]
@@ -247,7 +249,7 @@ def _render_provider_card(result: ProviderAccessResult) -> None:
                     ("Main Heading", result.extracted_heading or "n/a", None),
                     ("Quotes", _join_lines(result.quotes), None),
                     ("Facts", _join_lines(result.facts), None),
-                    ("Blocker Reason", result.blocker_reason or "n/a", "likely_blocked_by_site" if result.blocker_reason else None),
+                    (issue_label, result.blocker_reason or "n/a", issue_tone),
                 ]
             )
             if result.evidence_records:
@@ -365,7 +367,7 @@ def _provider_to_markdown(result: ProviderAccessResult) -> list[str]:
         f"- Evidence URL: `{result.evidence_url}`",
         f"- Extracted title: `{result.extracted_title}`",
         f"- Extracted heading: `{result.extracted_heading}`",
-        f"- Blocker reason: `{result.blocker_reason}`",
+        f"- {_issue_label(result)}: `{result.blocker_reason}`",
         "",
     ]
     if result.secondary_summary:
@@ -423,6 +425,30 @@ def _summary_tone(value: str | None) -> str | None:
     if value == "unavailable":
         return "inconclusive"
     return value
+
+
+def _has_js_fallback_issue(result: ProviderAccessResult) -> bool:
+    return result.verdict == "accessible" and "not a fetch block" in result.summary
+
+
+def _issue_label(result: ProviderAccessResult) -> str:
+    if _has_js_fallback_issue(result):
+        return "Access Issue"
+    return "Blocker Reason"
+
+
+def _issue_tone(result: ProviderAccessResult) -> str | None:
+    if not result.blocker_reason:
+        return None
+    if _has_js_fallback_issue(result):
+        return "inconclusive"
+    return "likely_blocked_by_site"
+
+
+def _summary_copy_tone(result: ProviderAccessResult) -> str:
+    if _has_js_fallback_issue(result):
+        return "inconclusive"
+    return result.verdict
 
 
 def _render_compact_details(rows: list[tuple[str, str, str | None]]) -> None:
