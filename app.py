@@ -168,7 +168,10 @@ def _render_summary_metrics(result: TargetUrlRunResult) -> None:
 
 def _render_control_fingerprint(control: ControlFingerprintResult) -> None:
     with st.expander("Validation-Only Control Fingerprint", expanded=False):
-        st.write(control.summary)
+        if control.verdict == "blocked":
+            st.warning(control.summary)
+        else:
+            st.write(control.summary)
         st.json(
             {
                 "requested_url": control.requested_url,
@@ -424,6 +427,8 @@ def _summary_tone(value: str | None) -> str | None:
         return "accessible"
     if value == "unavailable":
         return "inconclusive"
+    if value == "blocked":
+        return "likely_blocked_by_site"
     return value
 
 

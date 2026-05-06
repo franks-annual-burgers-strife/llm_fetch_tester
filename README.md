@@ -49,6 +49,8 @@ For local test runs:
 
 The validation-only control fingerprint is a local HTTP fetch. It extracts lightweight reference data such as HTTP status, final URL, title, first literal HTML `h1`, canonical URL, and a snippet. It is used to compare provider evidence, but it is not the answer to whether a provider-managed chat tool can access the URL.
 
+If the local control fetch receives a WAF/firewall response such as HTTP 403, Incapsula, access denied, or a challenge page, the control fingerprint is flagged as blocked. This is a warning about local validation quality. Provider results can still show that Gemini, Claude, or OpenAI reached the URL from their own infrastructure.
+
 JavaScript fallback pages are treated as access issues when the provider reached the exact URL. For example, a page that returns "enable JavaScript to run this app" is different from a hard block, CAPTCHA, Cloudflare challenge, or provider tool error. It means the provider got through to the URL before rendering, but may only see limited server-rendered content.
 
 Title, H1, quote, and fact mismatches should be read carefully. A provider may successfully access a page but return a prominent hero tagline, search metadata, cached title, or normalized document text instead of the literal DOM title or first `h1`. For this tool, exact URL access, provider retrieval metadata, citations, and block-page signals carry more weight than perfect content extraction.

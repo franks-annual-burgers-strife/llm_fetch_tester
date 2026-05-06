@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.3.1] - 2026-05-06
+
+### Changed
+- Local control fingerprint WAF/firewall responses now show as blocked validation warnings instead of available fingerprints.
+
 ## [0.3.0] - 2026-05-06
 
 ### Changed

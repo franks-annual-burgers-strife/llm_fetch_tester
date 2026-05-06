@@ -90,6 +90,31 @@ def test_fetch_control_fingerprint_extracts_title_heading_and_canonical() -> Non
     assert result.canonical_url == "https://example.com/page"
 
 
+def test_fetch_control_fingerprint_flags_local_waf_block() -> None:
+    html = """
+    <html>
+      <head><meta name="robots" content="noindex, nofollow"></head>
+      <body>Request unsuccessful. Incapsula incident ID: 801000120088829894</body>
+    </html>
+    """
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            403,
+            text=html,
+            headers={"content-type": "text/html"},
+            request=request,
+        )
+
+    client = httpx.Client(transport=httpx.MockTransport(handler), follow_redirects=True)
+    result = fetch_control_fingerprint("https://example.com/page", client=client)
+
+    assert result.verdict == "blocked"
+    assert result.status_code == 403
+    assert "local comparison evidence is limited" in result.summary
+    assert "Incapsula" in result.snippet
+
+
 def test_gemini_accessible_when_metadata_and_content_match() -> None:
     config = ProviderApiConfig(
         provider_id="gemini",

@@ -39,9 +39,11 @@ BLOCK_PAGE_HINTS = (
     "challenge",
     "cloudflare",
     "forbidden",
+    "incapsula",
     "login required",
     "paywall",
     "please verify you are human",
+    "request unsuccessful",
     "security check",
     "sorry, you have been blocked",
     "verify you are human",
@@ -304,10 +306,17 @@ def fetch_control_fingerprint(
         elif response.text.strip():
             snippet = trim_text(_normalize_text(response.text), limit=280)
             raw_excerpt = trim_text(response.text, limit=2500)
-        summary = f"Validation-only local fingerprint fetched with HTTP {response.status_code}."
+        control_verdict = _classify_control_fingerprint_status(response.status_code, snippet, raw_excerpt)
+        if control_verdict == "blocked":
+            summary = (
+                f"Validation-only local fingerprint was blocked or denied with HTTP {response.status_code}. "
+                "Provider checks can still be valid, but local comparison evidence is limited."
+            )
+        else:
+            summary = f"Validation-only local fingerprint fetched with HTTP {response.status_code}."
         return ControlFingerprintResult(
             requested_url=target_url,
-            verdict="available",
+            verdict=control_verdict,
             summary=summary,
             started_at=_format_ts(started_at),
             completed_at=_format_ts(completed_at),
@@ -1337,6 +1346,14 @@ def _looks_like_html(content_type: str, raw_body: str) -> bool:
 def _collect_block_signals(*values: str | None) -> list[str]:
     haystack = " ".join(value for value in values if value).lower()
     return [hint for hint in BLOCK_PAGE_HINTS if hint in haystack]
+
+
+def _classify_control_fingerprint_status(status_code: int, snippet: str, raw_excerpt: str) -> str:
+    if status_code >= 400:
+        return "blocked"
+    if _collect_block_signals(snippet, raw_excerpt):
+        return "blocked"
+    return "available"
 
 
 def _collect_degraded_access_signals(*values: str | None) -> list[str]:
