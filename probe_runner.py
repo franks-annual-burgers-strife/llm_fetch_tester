@@ -282,8 +282,13 @@ def fetch_control_fingerprint(
         response = http_client.get(
             target_url,
             headers={
-                "Accept": "text/html,application/pdf,application/json;q=0.9,*/*;q=0.8",
-                "User-Agent": "llm-url-access-tester/1.0",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,application/pdf;q=0.9,image/avif,image/webp,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.9",
+                "User-Agent": (
+                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/131.0.0.0 Safari/537.36"
+                ),
             },
         )
         completed_at = datetime.now(timezone.utc)
