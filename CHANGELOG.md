@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.3.2] - 2026-05-15
+
+### Changed
+- Control fingerprint fetch now uses a browser-like User-Agent, Accept, and Accept-Language so generic-browser-accessible sites no longer return WAF challenge pages as the control.
+
 ## [0.3.1] - 2026-05-06
 
 ### Changed
