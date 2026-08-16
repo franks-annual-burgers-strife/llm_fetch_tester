@@ -211,7 +211,7 @@ def test_claude_detects_block_page() -> None:
         display_name="Claude / Anthropic",
         api_url="https://api.anthropic.com/v1/messages",
         api_key="anthropic-secret",
-        model="claude-sonnet-4-20250514",
+        model="claude-sonnet-4-6",
     )
     payload = {
         "content": [
@@ -263,7 +263,7 @@ def test_claude_web_fetch_tool_error_counts_as_blocked() -> None:
         display_name="Claude / Anthropic",
         api_url="https://api.anthropic.com/v1/messages",
         api_key="anthropic-secret",
-        model="claude-sonnet-4-20250514",
+        model="claude-sonnet-4-6",
     )
     payload = {
         "content": [

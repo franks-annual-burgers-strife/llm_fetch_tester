@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.3.3] - 2026-08-17
+
+### Fixed
+- Claude checks failed with a provider error because the default model had reached its retirement date and the API no longer served it. The default is now a current model, and a saved or configured value pointing at the retired model is migrated automatically on startup.
+
 ## [0.3.2] - 2026-05-15
 
 ### Changed

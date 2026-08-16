@@ -32,7 +32,7 @@ def test_build_claude_access_request() -> None:
         display_name="Claude / Anthropic",
         api_url="https://api.anthropic.com/v1/messages",
         api_key="anthropic-secret",
-        model="claude-sonnet-4-20250514",
+        model="claude-sonnet-4-6",
     )
 
     request = build_claude_access_request("https://example.com/articles/test", config)

@@ -15,7 +15,7 @@ Current defaults:
 | Provider | Default model | Tool path | Notes |
 | --- | --- | --- | --- |
 | Gemini | `gemini-2.5-flash` | `url_context` | Google documents URL context for direct URL retrieval, with model support also including newer Gemini 3 models. |
-| Claude | `claude-sonnet-4-20250514` | `web_fetch_20250910` | Anthropic's newer `web_fetch_20260209` adds dynamic filtering for newer Claude 4.6+ models; this app uses the still-available `20250910` tool path for broad compatibility. |
+| Claude | `claude-sonnet-4-6` | `web_fetch_20250910` | Anthropic's newer `web_fetch_20260209` adds dynamic filtering for newer Claude 4.6+ models; this app uses the still-available `20250910` tool path for broad compatibility. |
 | OpenAI | `gpt-4.1-mini` | Responses API `web_search` | Search is required in the request and source-list inclusion is enabled. OpenAI documents newer recommended search paths such as `gpt-5.5`, but `gpt-4.1-mini` remains supported for Responses web search. |
 
 Provider docs:

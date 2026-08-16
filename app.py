@@ -501,6 +501,7 @@ def _init_session_state() -> None:
         },
         "anthropic": {
             "claude-3-5-haiku-latest": defaults["anthropic"].model,
+            "claude-sonnet-4-20250514": defaults["anthropic"].model,
         },
     }
     st.session_state.setdefault("target_url", "")
